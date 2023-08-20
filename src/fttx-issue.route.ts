@@ -140,7 +140,7 @@ export const fttxIssueRoute = async (fastify: FastifyInstance) => {
 
         reply.send({ data: subscription });
       } catch (error) {
-        console.error(error);
+        fastify.log.error(error);
         reply.code(500).send({ error: "Database operation failed." });
       } finally {
         connection.release();
