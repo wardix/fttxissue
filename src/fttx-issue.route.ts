@@ -124,6 +124,18 @@ export const fttxIssueRoute = async (fastify: FastifyInstance) => {
           );
         });
 
+        for (const hp in notification) {
+          const notificationLines = [
+            `${process.env.NOTIFICATION_PREFIX} - ${subject}`,
+          ];
+          notificationLines.push("Customer terdampak:");
+          for (const { csid, acc } of notification[hp]) {
+            const subsriptionLink = `https://isx.nusa.net.id/v2/customer/service/${csid}/detail`;
+            notificationLines.push(`${acc} - ${subsriptionLink}`);
+          }
+          sendNotification(hp, notificationLines.join("\n"));
+        }
+
         await Promise.all(promises);
 
         reply.send({ data: subscription });
@@ -136,3 +148,21 @@ export const fttxIssueRoute = async (fastify: FastifyInstance) => {
     }
   );
 };
+
+async function sendNotification(destination: string, message: string) {
+  const headers = {
+    "Content-Type": "application/json",
+    "X-Api-Key": process.env.NOTIFICATION_API_KEY!,
+  };
+  const body = {
+    to: destination,
+    type: "text",
+    msg: message,
+  };
+
+  fetch(process.env.NOTIFICATION_API_URL!, {
+    method: "POST",
+    headers: headers,
+    body: JSON.stringify(body),
+  });
+}
