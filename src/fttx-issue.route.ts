@@ -112,8 +112,10 @@ export const fttxIssueRoute = async (fastify: FastifyInstance) => {
         const promises = rows.map((row) => {
           const { cid, csid, acc, hp } = row;
 
-          notification[hp] = notification[hp] ?? [];
-          notification[hp].push({ csid, acc });
+          if (hp) {
+            notification[hp] = notification[hp] ?? [];
+            notification[hp].push({ csid, acc });
+          }
 
           subscription[cid] = subscription[cid] ?? [];
           subscription[cid].push({ csid, acc });
