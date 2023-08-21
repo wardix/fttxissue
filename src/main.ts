@@ -13,6 +13,10 @@ const fastify = Fastify({ logger: true });
 fastify.register(fastifyMySQL, { promise: true, connectionString: MYSQL_URL });
 fastify.register(fttxIssueRoute, { prefix: "/v1/fttx-issue" });
 
+fastify.get("/", async (_request, _reply) => {
+  return { message: "OK" };
+});
+
 fastify.listen({ port: +PORT }, (err) => {
   if (err) throw err;
 });
