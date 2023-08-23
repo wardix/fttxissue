@@ -49,23 +49,21 @@ export const fttxIssueRoute = async (fastify: FastifyInstance) => {
         } = req.body;
 
         const [result] = await connection.query<SQLResult>(
-          `
-        INSERT INTO noc (
-          start_time,
-          end_time,
-          subject,
-          status,
-          cause,
-          effect,
-          eksternal,
-          branchId,
-          employee_id,
-          datetime,
-          fo_vendor_id,
-          fiber_vendor_id,
-          effected_customer,
-          type
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?)`,
+          `INSERT INTO noc SET
+             start_time = ?,
+             end_time = ?,
+             subject = ?,
+             status = ?,
+             cause = ?,
+             effect = ?,
+             eksternal = ?,
+             branchId = ?,
+             employee_id = ?,
+             datetime = NOW(),
+             fo_vendor_id = ?,
+             fiber_vendor_id = ?,
+             effected_customer = ?,
+             type = ?`,
           [
             startTime,
             startTime,
