@@ -5,10 +5,8 @@ interface RequestBody {
   subject: string;
   effect: string;
   startTime: string;
-  operator: string;
   operators: string[];
   branch: string;
-  pop: string;
   cids: string[];
 }
 
@@ -37,51 +35,8 @@ export const fttxIssueRoute = async (fastify: FastifyInstance) => {
       const connection = await fastify.mysql.getConnection();
 
       try {
-        const {
-          subject,
-          effect,
-          startTime,
-          operator,
-          operators,
-          branch,
-          pop,
-          cids,
-        } = req.body;
-
-        const [result] = await connection.query<SQLResult>(
-          `INSERT INTO noc SET
-             start_time = ?,
-             end_time = ?,
-             subject = ?,
-             status = ?,
-             cause = ?,
-             effect = ?,
-             eksternal = ?,
-             branchId = ?,
-             employee_id = ?,
-             datetime = NOW(),
-             fo_vendor_id = ?,
-             fiber_vendor_id = ?,
-             effected_customer = ?,
-             type = ?`,
-          [
-            startTime,
-            startTime,
-            subject,
-            DEFAULT_ISSUE_STATUS,
-            DEFAULT_ISSUE_CAUSE,
-            effect,
-            effect,
-            branch,
-            DEFAULT_ISSUE_EMPLOYEE,
-            operator,
-            pop,
-            DEFAULT_ISSUE_EFFECT,
-            FTTX_TYPE,
-          ]
-        );
-
-        const insertId = result.insertId;
+        const { subject, effect, startTime, operators, branch, cids } =
+          req.body;
 
         const operatorsPlaceHolder = new Array(operators.length)
           .fill("?")
@@ -90,7 +45,7 @@ export const fttxIssueRoute = async (fastify: FastifyInstance) => {
 
         const [rows] = await connection.query<Row[]>(
           `
-        SELECT cstc.value cid, cs.CustServId csid, cs.CustAccName acc, e.EmpHP hp
+        SELECT cstc.value cid, cs.CustServId csid, cs.CustAccName acc, e.EmpHP hp, nf.id pop
         FROM CustomerServiceTechnicalCustom cstc
         LEFT JOIN CustomerServiceTechnicalLink cstl ON cstc.technicalTypeId = cstl.id
         LEFT JOIN noc_fiber nf ON cstl.foVendorId = nf.id
@@ -106,10 +61,10 @@ export const fttxIssueRoute = async (fastify: FastifyInstance) => {
 
         const notification: Record<string, any[]> = {};
         const subscription: Record<string, any[]> = {};
+        const pops: any[] = [];
+        const csids: any[] = [];
 
-        const promises = rows.map((row) => {
-          const { cid, csid, acc, hp } = row;
-
+        for (const { cid, csid, acc, hp, pop } of rows) {
           if (hp) {
             notification[hp] = notification[hp] ?? [];
             notification[hp].push({ csid, acc });
@@ -117,7 +72,50 @@ export const fttxIssueRoute = async (fastify: FastifyInstance) => {
 
           subscription[cid] = subscription[cid] ?? [];
           subscription[cid].push({ csid, acc });
+          if (!pops.includes(pop)) {
+            pops.push(pop);
+          }
+          if (!csids.includes(csid)) {
+            csids.push(csid);
+          }
+        }
 
+        const [result] = await connection.query<SQLResult>(
+          `INSERT INTO noc SET
+             start_time = ?,
+             end_time = ?,
+             subject = ?,
+             status = ?,
+             cause = ?,
+             effect = ?,
+             eksternal = ?,
+             branchId = ?,
+             employee_id = ?,
+             datetime = NOW(),
+             fiber_vendor_id = ?,
+             fo_vendor_id = ?,
+             effected_customer = ?,
+             type = ?`,
+          [
+            startTime,
+            startTime,
+            subject,
+            DEFAULT_ISSUE_STATUS,
+            DEFAULT_ISSUE_CAUSE,
+            effect,
+            effect,
+            branch,
+            DEFAULT_ISSUE_EMPLOYEE,
+            `,${operators.join(",")},`,
+            `,${pops.join(",")},`,
+            DEFAULT_ISSUE_EFFECT,
+            FTTX_TYPE,
+          ]
+        );
+
+        const insertId = result.insertId;
+
+        const promises = csids.map((csid) => {
           return connection.query(
             "INSERT INTO noc_customer_service (noc_id, cs_id) VALUES (?, ?)",
             [insertId, csid]
