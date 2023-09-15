@@ -45,7 +45,7 @@ export const fttxIssueRoute = async (fastify: FastifyInstance) => {
 
         const [rows] = await connection.query<Row[]>(
           `
-        SELECT cstc.value cid, cs.CustServId csid, cs.CustAccName acc, e.EmpHP hp, nf.id pop
+        SELECT cstc.value cid, cs.CustServId csid, cs.CustAccName acc, e.EmpHP hp, nf.id pop, e.EmpJoinStatus status
         FROM CustomerServiceTechnicalCustom cstc
         LEFT JOIN CustomerServiceTechnicalLink cstl ON cstc.technicalTypeId = cstl.id
         LEFT JOIN noc_fiber nf ON cstl.foVendorId = nf.id
@@ -64,8 +64,8 @@ export const fttxIssueRoute = async (fastify: FastifyInstance) => {
         const pops: any[] = [];
         const csids: any[] = [];
 
-        for (const { cid, csid, acc, hp, pop } of rows) {
-          if (hp) {
+        for (const { cid, csid, acc, hp, pop, status } of rows) {
+          if (hp && status != "QUIT") {
             notification[hp] = notification[hp] ?? [];
             notification[hp].push({ csid, acc });
           }
