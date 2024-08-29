@@ -1,47 +1,46 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import { OkPacket, RowDataPacket } from "mysql2";
+import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
+import { OkPacket, RowDataPacket } from 'mysql2'
 
 interface RequestBody {
-  subject: string;
-  effect: string;
-  startTime: string;
-  operators: string[];
-  branch: string;
-  cids: string[];
+  subject: string
+  effect: string
+  startTime: string
+  operators: string[]
+  branch: string
+  cids: string[]
 }
 
 interface SQLResult extends OkPacket {
-  insertId: number;
+  insertId: number
 }
 
 interface Row extends RowDataPacket {
-  cid: string;
-  csid: string;
-  acc: string;
-  hp: string;
+  cid: string
+  csid: string
+  acc: string
+  hp: string
 }
 
-const DEFAULT_ISSUE_STATUS = "Open";
-const DEFAULT_ISSUE_CAUSE = "under investigate";
-const DEFAULT_ISSUE_EMPLOYEE = "0200306";
-const DEFAULT_ISSUE_EFFECT = "Ya";
-const CID_ATTRIBUTE = "Vendor CID";
-const FTTX_TYPE = "fttx";
+const DEFAULT_ISSUE_STATUS = 'Open'
+const DEFAULT_ISSUE_CAUSE = 'under investigate'
+const DEFAULT_ISSUE_EMPLOYEE = '0200306'
+const DEFAULT_ISSUE_EFFECT = 'Ya'
+const CID_ATTRIBUTE = 'Vendor CID'
+const FTTX_TYPE = 'fttx'
 
 export const fttxIssueRoute = async (fastify: FastifyInstance) => {
   fastify.post(
-    "/",
+    '/',
     async (req: FastifyRequest<{ Body: RequestBody }>, reply: FastifyReply) => {
-      const connection = await fastify.mysql.getConnection();
+      const connection = await fastify.mysql.getConnection()
 
       try {
-        const { subject, effect, startTime, operators, branch, cids } =
-          req.body;
+        const { subject, effect, startTime, operators, branch, cids } = req.body
 
         const operatorsPlaceHolder = new Array(operators.length)
-          .fill("?")
-          .join(", ");
-        const cidsPlaceHolder = new Array(cids.length).fill("?").join(", ");
+          .fill('?')
+          .join(', ')
+        const cidsPlaceHolder = new Array(cids.length).fill('?').join(', ')
 
         const [rows] = await connection.query<Row[]>(
           `
@@ -56,27 +55,27 @@ export const fttxIssueRoute = async (fastify: FastifyInstance) => {
         WHERE cstc.attribute = ?
           AND fv.id IN (${operatorsPlaceHolder})
           AND cstc.value IN (${cidsPlaceHolder})`,
-          [CID_ATTRIBUTE, ...operators, ...cids]
-        );
+          [CID_ATTRIBUTE, ...operators, ...cids],
+        )
 
-        const notification: Record<string, any[]> = {};
-        const subscription: Record<string, any[]> = {};
-        const pops: any[] = [];
-        const csids: any[] = [];
+        const notification: Record<string, any[]> = {}
+        const subscription: Record<string, any[]> = {}
+        const pops: any[] = []
+        const csids: any[] = []
 
         for (const { cid, csid, acc, hp, pop, status } of rows) {
-          if (hp && status != "QUIT") {
-            notification[hp] = notification[hp] ?? [];
-            notification[hp].push({ csid, acc });
+          if (hp && status != 'QUIT') {
+            notification[hp] = notification[hp] ?? []
+            notification[hp].push({ csid, acc })
           }
 
-          subscription[cid] = subscription[cid] ?? [];
-          subscription[cid].push({ csid, acc });
+          subscription[cid] = subscription[cid] ?? []
+          subscription[cid].push({ csid, acc })
           if (!pops.includes(pop)) {
-            pops.push(pop);
+            pops.push(pop)
           }
           if (!csids.includes(csid)) {
-            csids.push(csid);
+            csids.push(csid)
           }
         }
 
@@ -106,61 +105,61 @@ export const fttxIssueRoute = async (fastify: FastifyInstance) => {
             effect,
             branch,
             DEFAULT_ISSUE_EMPLOYEE,
-            `,${operators.join(",")},`,
-            `,${pops.join(",")},`,
+            `,${operators.join(',')},`,
+            `,${pops.join(',')},`,
             DEFAULT_ISSUE_EFFECT,
             FTTX_TYPE,
-          ]
-        );
+          ],
+        )
 
-        const insertId = result.insertId;
+        const insertId = result.insertId
 
         const promises = csids.map((csid) => {
           return connection.query(
-            "INSERT INTO noc_customer_service (noc_id, cs_id) VALUES (?, ?)",
-            [insertId, csid]
-          );
-        });
+            'INSERT INTO noc_customer_service (noc_id, cs_id) VALUES (?, ?)',
+            [insertId, csid],
+          )
+        })
 
         for (const hp in notification) {
           const notificationLines = [
             `${process.env.NOTIFICATION_PREFIX} - ${subject}`,
-          ];
-          notificationLines.push("Customer terdampak:");
+          ]
+          notificationLines.push('Customer terdampak:')
           for (const { csid, acc } of notification[hp]) {
-            const subsriptionLink = `https://isx.nusa.net.id/v2/customer/service/${csid}/detail`;
-            notificationLines.push(`${acc} - ${subsriptionLink}`);
+            const subsriptionLink = `https://isx.nusa.net.id/v2/customer/service/${csid}/detail`
+            notificationLines.push(`${acc} - ${subsriptionLink}`)
           }
-          sendNotification(hp, notificationLines.join("\n"));
+          sendNotification(hp, notificationLines.join('\n'))
         }
 
-        await Promise.all(promises);
+        await Promise.all(promises)
 
-        reply.send({ data: subscription });
+        reply.send({ data: subscription })
       } catch (error) {
-        fastify.log.error(error);
-        reply.code(500).send({ error: "Database operation failed." });
+        fastify.log.error(error)
+        reply.code(500).send({ error: 'Database operation failed.' })
       } finally {
-        connection.release();
+        connection.release()
       }
-    }
-  );
-};
+    },
+  )
+}
 
 async function sendNotification(destination: string, message: string) {
   const headers = {
-    "Content-Type": "application/json",
-    "X-Api-Key": process.env.NOTIFICATION_API_KEY!,
-  };
+    'Content-Type': 'application/json',
+    'X-Api-Key': process.env.NOTIFICATION_API_KEY!,
+  }
   const body = {
     to: destination,
-    type: "text",
+    type: 'text',
     msg: message,
-  };
+  }
 
   fetch(process.env.NOTIFICATION_API_URL!, {
-    method: "POST",
+    method: 'POST',
     headers: headers,
     body: JSON.stringify(body),
-  });
+  })
 }

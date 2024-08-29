@@ -1,7 +1,7 @@
-import { MySQLPromisePool } from "@fastify/mysql";
+import { MySQLPromisePool } from '@fastify/mysql'
 
-declare module "fastify" {
+declare module 'fastify' {
   export interface FastifyInstance {
-    mysql: MySQLPromisePool;
+    mysql: MySQLPromisePool
   }
 }
