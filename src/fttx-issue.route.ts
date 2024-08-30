@@ -79,6 +79,20 @@ export const fttxIssueRoute = async (fastify: FastifyInstance) => {
           }
         }
 
+        const formatter = new Intl.DateTimeFormat('en-GB', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false,
+        })
+
+        const [date, time] = formatter.format(new Date(startTime)).split(', ')
+        const [dd, mm, yyyy] = date.split('/')
+        const formattedStartTime = `${yyyy}-${mm}-${dd} ${time}`
+
         const [result] = await connection.query<SQLResult>(
           `INSERT INTO noc SET
              start_time = ?,
@@ -96,8 +110,8 @@ export const fttxIssueRoute = async (fastify: FastifyInstance) => {
              effected_customer = ?,
              type = ?`,
           [
-            startTime,
-            startTime,
+            formattedStartTime,
+            formattedStartTime,
             subject,
             DEFAULT_ISSUE_STATUS,
             DEFAULT_ISSUE_CAUSE,
