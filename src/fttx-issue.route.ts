@@ -59,7 +59,7 @@ export const fttxIssueRoute = async (fastify: FastifyInstance) => {
         )
 
         const notification: Record<string, any[]> = {}
-        const subscription: Record<string, any[]> = {}
+        const subscriber: Record<string, any[]> = {}
         const pops: any[] = []
         const csids: any[] = []
 
@@ -69,8 +69,8 @@ export const fttxIssueRoute = async (fastify: FastifyInstance) => {
             notification[hp].push({ csid, acc })
           }
 
-          subscription[cid] = subscription[cid] ?? []
-          subscription[cid].push({ csid, acc })
+          subscriber[cid] = subscriber[cid] ?? []
+          subscriber[cid].push({ csid, acc })
           if (!pops.includes(pop)) {
             pops.push(pop)
           }
@@ -149,7 +149,7 @@ export const fttxIssueRoute = async (fastify: FastifyInstance) => {
 
         await Promise.all(promises)
 
-        reply.send({ data: subscription })
+        reply.send({ data: subscriber })
       } catch (error) {
         fastify.log.error(error)
         reply.code(500).send({ error: 'Database operation failed.' })
