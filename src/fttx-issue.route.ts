@@ -141,8 +141,8 @@ export const fttxIssueRoute = async (fastify: FastifyInstance) => {
           ]
           notificationLines.push('Customer terdampak:')
           for (const { csid, acc } of notification[hp]) {
-            const subsriptionLink = `https://isx.nusa.net.id/v2/customer/service/${csid}/detail`
-            notificationLines.push(`${acc} - ${subsriptionLink}`)
+            const subscriberLink = `https://isx.nusa.net.id/v2/customer/service/${csid}/detail`
+            notificationLines.push(`${acc} - ${subscriberLink}`)
           }
           sendNotification(hp, notificationLines.join('\n'))
         }
