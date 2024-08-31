@@ -79,6 +79,10 @@ export const fttxIssueRoute = async (fastify: FastifyInstance) => {
           }
         }
 
+        if (csids.length == 0) {
+          return { data: {} }
+        }
+
         const formatter = new Intl.DateTimeFormat('en-GB', {
           year: 'numeric',
           month: '2-digit',
